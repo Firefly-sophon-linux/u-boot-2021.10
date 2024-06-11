@@ -297,19 +297,16 @@ int board_init(void)
 }
 
 #define DTSNAME_MAX_LEN 32
-#if defined(CONFIG_ROOTFS_UBUNTU) || defined(CONFIG_ROOTFS_DEBIAN)
-#define DEFAULT_DTSNAME "config-cv186ah_wevb_4G"
-#else
 #define DEFAULT_DTSNAME "config-" __stringify(CVICHIP) "_" __stringify(CVIBOARD)
-#endif
 
 void get_dts_type_from_oem(unsigned char *dtsname)
 {
-#ifdef CONFIG_EMMC_SUPPORT
 	if (!dtsname) {
 		printf("get dts type from oem failed!\n");
 		return;
 	}
+#if 0
+#ifdef CONFIG_EMMC_SUPPORT
 	run_command("mmc dev 0 2\0", 0);
 	run_command("mmc read 0x120000000 0 0xc0", 0);
 	memcpy(dtsname, (void *)(0x120000000 + 0xa0), DTSNAME_MAX_LEN);
@@ -317,8 +314,9 @@ void get_dts_type_from_oem(unsigned char *dtsname)
 #endif
 	// use default dts
 	if (strlen(dtsname) == 0)
+#endif
 		memcpy(dtsname, DEFAULT_DTSNAME, sizeof(DEFAULT_DTSNAME));
-	printf("OEM INFO: DTS_TYPE[%s]\n", dtsname);
+	printf("FORCE INFO: DTS_TYPE[%s]\n", dtsname);
 }
 
 int setup_sophgo_dts(void)
