@@ -95,3 +95,9 @@ GTAGS
 
 # Python cache
 __pycache__
+
+# build files
+build/
+include/cvi_board_memmap.h
+include/cvipart.h
+include/imgs.h
