@@ -296,7 +296,29 @@ static int do_cvi_update(struct cmd_tbl *cmdtp, int flag, int argc,
 	if (argc == 1) {
 		update_magic = readl((unsigned int *)BOOT_SOURCE_FLAG_ADDR);
 		if (update_magic == SD_UPDATE_MAGIC) {
+			char *env;
+			char led_error[16] = {0};
+			char led_status[16] = {0};
+			// save led env
+			env = env_get("LED_ERROR");
+			if (env != NULL) {
+				strncpy(led_error, env, sizeof(led_error)-1);
+				led_error[sizeof(led_error)-1] = '\0';
+			}
+			env = env_get("LED_STATUS");
+			if (env != NULL) {
+				strncpy(led_status, env, sizeof(led_status)-1);
+				led_error[sizeof(led_status)-1] = '\0';
+			}
+			// set env to default
 			run_command("env default -a", 0);
+			// restore led env
+			if (strlen(led_error) > 0) {
+				env_set("LED_ERROR", led_error);
+			}
+			if (strlen(led_status) > 0) {
+				env_set("LED_STATUS", led_status);
+			}
 			#if defined(CONFIG_ROOTFS_UBUNTU) || defined(CONFIG_ROOTFS_DEBIAN)
 			ret = run_command("load ${devtype} ${devnum}:${distro_bootpart} ${scriptaddr} /$ota_path/boot.scr;source ${scriptaddr}", 0);
 			if (ret != 0) {

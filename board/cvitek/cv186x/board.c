@@ -388,6 +388,7 @@ int board_late_init(void)
 #ifdef CONFIG_VIDEO_SOPH
 	board_show_logo();
 #endif
+	cvi_board_late_init();
 
 	return 0;
 }
