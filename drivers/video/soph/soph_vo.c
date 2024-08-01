@@ -34,15 +34,11 @@
 
 #include <fs.h>
 
-#define DTSNAME_MAX_LEN			32
-#define LOGO_ADDR_4G			(0x154000000)
-#define LOGO_ADDR_8G			(0x140000000)
+#define LOGO_ADDR (0X102E00000)
 
 DECLARE_GLOBAL_DATA_PTR;
 static LIST_HEAD(soph_display_list);
 static LIST_HEAD(logo_cache_list);
-
-extern void get_dts_type_from_oem(unsigned char *dtsname);
 
 enum {
 	PORT_DIR_IN,
@@ -851,11 +847,8 @@ static int load_bmp_logo(struct display_state *s)
 	struct soph_logo_cache *logo_cache;
 	struct bmp_header *header = NULL;
 	void *dst, *pdst;
-	char dtsType[DTSNAME_MAX_LEN] = {0};
-	const char *to_find = "4G";
 	int ret = 0;
 	int dst_size;
-	char *ptr;
 
 	struct logo_info *logo = &s->logo;
 	char *bmp_name = s->ulogo_name;
@@ -891,15 +884,7 @@ static int load_bmp_logo(struct display_state *s)
 	* only support 24bpp;
 	*/
 	if (logo->bpp == 24) {
-		get_dts_type_from_oem(dtsType);
-		ptr = strstr(dtsType, to_find);
-		if (ptr != NULL) {
-			dst = (void*)LOGO_ADDR_4G;
-			printf("use 4G dts config for vo logo\n");
-		} else {
-			dst = (void*)LOGO_ADDR_8G;
-			printf("use 8G dts config for vo logo\n");
-		}
+			dst = (void*)LOGO_ADDR;
 	} else {
 		printf("failed to display logo with bpp:%d\n", logo->bpp);
 		ret = -EINVAL;

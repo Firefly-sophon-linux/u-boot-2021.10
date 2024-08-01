@@ -459,8 +459,8 @@ static int soph_disp_init(struct display_state *state)
 	/*rgb->bgr*/
 	_reg_write(REG_DISP_SWAP_RGB(disp_id), 0x5);
 	/*set fde window color to white*/
-	_reg_write_mask(REG_DISP_PAT_COLOR1(disp_id), 0x3ff0000, 0x3ff0000);
-	_reg_write_mask(REG_DISP_PAT_COLOR2(disp_id), 0x3ff03ff, 0x3ff03ff);
+	_reg_write_mask(REG_DISP_PAT_COLOR1(disp_id), 0x3ff0000, 0x0000000);
+	_reg_write_mask(REG_DISP_PAT_COLOR2(disp_id), 0x3ff03ff, 0x0000000);
 
 	//csc
 	switch (fmt) {
