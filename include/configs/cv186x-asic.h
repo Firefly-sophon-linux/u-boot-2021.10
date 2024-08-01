@@ -318,9 +318,9 @@
 		"load mmc 0:2 ${uImage_addr} recovery.itb;" \
 		"bootm ${uImage_addr}#config-" FDT_NO ";"
 
-		#define CONFIG_BOOTCOMMAND "cvi_update || load mmc 0:1 ${scriptaddr} boot.scr.emmc; source ${scriptaddr}"
+		#define CONFIG_BOOTCOMMAND "led ${LED_STATUS:-status} on; cvi_update || load mmc 0:1 ${scriptaddr} boot.scr.emmc; source ${scriptaddr}"
 	#else
-		#define CONFIG_BOOTCOMMAND	SHOWLOGOCMD "cvi_update || run emmcboot || run norboot || run nandboot"
+		#define CONFIG_BOOTCOMMAND	SHOWLOGOCMD "led ${LED_STATUS:-status} on; cvi_update || run emmcboot || run norboot || run nandboot"
 	#endif
 
 	#if defined(CONFIG_NAND_SUPPORT)
