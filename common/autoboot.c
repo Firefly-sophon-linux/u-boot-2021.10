@@ -363,7 +363,6 @@ static int abortboot_single_key(int bootdelay)
 {
 	int abort = 0;
 	unsigned long ts;
-
 	printf("Hit any key to stop autoboot: %2d ", bootdelay);
 
 	/*
@@ -489,6 +488,7 @@ void autoboot_command(const char *s)
 	(!defined CV186X_FPGA_PALLDIUM_ENV)
 		board_save_time_record(TIME_RECORDS_FIELD_BOOTCMD_START);
 #endif
+    run_command("firefly_upgrade",0);
 		run_command_list(s, -1, 0);
 
 		if (lock)
