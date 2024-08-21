@@ -82,6 +82,16 @@ comment "Commands"
 
 menu "Info commands"
 
+config CMD_TFTP_SR_UPGTADE_BOOT
+       bool "server,tftp upgrade"
+       help
+               If it is a firefly server board, it will detect whether TFTP upgrade is required.
+
+config CMD_FIREFLY_SUB_DETECT
+    bool "Firefly Position Command"
+    help
+      This command detects the position based on GPIO inputs defined in the device tree.
+
 config CMD_ACPI
 	bool "acpi"
 	depends on ACPIGEN

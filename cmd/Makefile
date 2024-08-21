@@ -12,6 +12,8 @@ obj-y += panic.o
 obj-y += version.o
 
 # command
+obj-$(CONFIG_CMD_TFTP_SR_UPGTADE_BOOT) += firefly_upgrade.o
+obj-$(CONFIG_CMD_FIREFLY_SUB_DETECT) += firefly-sub-detect.o
 obj-$(CONFIG_CMD_ACPI) += acpi.o
 obj-$(CONFIG_CMD_ADDRMAP) += addrmap.o
 obj-$(CONFIG_CMD_AES) += aes.o
