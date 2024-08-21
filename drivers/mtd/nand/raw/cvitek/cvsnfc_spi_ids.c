@@ -204,6 +204,31 @@ struct cvsnfc_chip_info cvsnfc_spi_nand_flash_table[] = {
 		.sample_param = SAMPLE_PARAM,
 		.xtal_switch = 1,
 	},
+	// 1.8V
+	/* W25N04KW (4G-bit) 1.8V */
+	{
+		.name      = "W25N04KW",
+		.id        = {0xef, 0xba, 0x23},
+		.id_len    = 3,
+		.chipsize  = _512M,
+		.erasesize = _128K,
+		.pagesize  = _2K,
+		.oobsize   = 128,
+		.badblock_pos = BBP_FIRST_PAGE,
+		.driver    = &spi_nand_driver_esmt,
+		.flags = FLAGS_ENABLE_X2_BIT | FLAGS_ENABLE_X4_BIT,
+		.ecc_en_feature_offset = 0xb0, /* Configuration register */
+		.ecc_en_mask = 1 << 4, /* bit 4 */
+		.ecc_status_offset = 0xc0, /* Status register */
+		.ecc_status_mask = 0x30, /* bit 4 & 5 */
+		.ecc_status_shift = 4,
+		.ecc_status_uncorr_val = 0x2,
+		.sck_l = 1,
+		.sck_h = 0,
+		.max_freq = SPI_NAND_FREQ_62MHz,
+		.sample_param = SAMPLE_PARAM,
+		.xtal_switch = 1,
+	},
 	/* 25N02KWZEIR 1.8V */
 	{
 		.name      = "25N02KWZEIR",

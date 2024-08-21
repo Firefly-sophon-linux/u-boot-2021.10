@@ -213,6 +213,10 @@ void pinmux_config(int io_type)
 		default:
 			break;
 	}
+
+	// Pins of mipi used for other function
+	mmio_write_32(0x6700b0c0, 0x3fffffff);
+	mmio_write_32(0x6700b160, 0x0);
 }
 
 #include "../cvi_board_init.c"

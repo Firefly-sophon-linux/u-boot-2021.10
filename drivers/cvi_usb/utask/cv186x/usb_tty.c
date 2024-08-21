@@ -261,7 +261,7 @@ void print_buf_addr(void)
 /* interrupt handler */
 void AcmIsr(void)
 {
-	dwc3_uboot_handle_interrupt(0);
+	soph_dwc3_uboot_handle_interrupt(0);
 }
 
 static int get_desc_acm(CH9_USBSPEED speed, u8 *acm_desc)
@@ -1148,7 +1148,7 @@ int acm_app(void)
 	// drv_obj.priv.dwc3.ctrl_req = (void *)setup_buf;
 	// res = dwc3_generic_probe(&drv_obj.priv);
 
-	dwc3_uboot_init(&cvi_dwc3_dev);
+	soph_dwc3_uboot_init(&cvi_dwc3_dev);
 
 	if (res != 0)
 		goto error;
@@ -1179,7 +1179,7 @@ unconfigured:
 		if (get_timer(ts) > 1000 && flag_enter_dL == 0) {
 			NOTICE("Enumeration failed\n");
 			acm_mem_release();
-			dwc3_uboot_exit(0);
+			soph_dwc3_uboot_exit(0);
 			return 0;
 		}
 	}
@@ -1246,7 +1246,7 @@ unconfigured:
 	NOTICE("Leave transfer loop\n");
 	gadget->ops->pullup(gadget, 0);
 	usb_gadget_unregister_driver(&g_driver);
-	dwc3_uboot_exit(0);
+	soph_dwc3_uboot_exit(0);
 	acm_mem_release();
 	NOTICE("USB stop\n");
 	return 0;

@@ -884,7 +884,7 @@ static int load_bmp_logo(struct display_state *s)
 	* only support 24bpp;
 	*/
 	if (logo->bpp == 24) {
-			dst = (void*)LOGO_ADDR;
+		dst = (void*)LOGO_ADDR;
 	} else {
 		printf("failed to display logo with bpp:%d\n", logo->bpp);
 		ret = -EINVAL;

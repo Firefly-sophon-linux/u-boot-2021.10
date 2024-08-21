@@ -204,7 +204,13 @@ static int rtl8201f_config(struct phy_device *phydev)
 static int rtl8211f_config(struct phy_device *phydev)
 {
 	u16 reg;
-
+#if IS_ENABLED(CONFIG_TARGET_CVITEK_CV186X)
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211F_PAGE_SELECT, 0xa43);
+	reg = phy_read(phydev, MDIO_DEVAD_NONE, 0x19);
+	reg = 	reg & ~0x21;
+	phy_write(phydev, MDIO_DEVAD_NONE, 0x19, reg);	
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211F_PAGE_SELECT, 0x0);	
+#endif
 	if (phydev->flags & PHY_RTL8211F_FORCE_EEE_RXC_ON) {
 		unsigned int reg;
 

@@ -1016,8 +1016,8 @@ struct dwc3_gadget_ep_cmd_params {
 /* prototypes */
 int dwc3_gadget_resize_tx_fifos(struct dwc3 *dwc);
 void dwc3_of_parse(struct dwc3 *dwc);
-int dwc3_init(struct dwc3 *dwc);
-void dwc3_remove(struct dwc3 *dwc);
+int soph_dwc3_init(struct dwc3 *dwc);
+void soph_dwc3_remove(struct dwc3 *dwc);
 
 static inline int dwc3_host_init(struct dwc3 *dwc)
 { return 0; }

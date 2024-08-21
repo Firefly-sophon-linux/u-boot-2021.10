@@ -15,7 +15,7 @@
 
 extern int acm_app(void);
 
-static void cvi_usb_hw_init(void)
+void cvi_usb_hw_init(void)
 {
 	u32 value;
 	u32 otp_usb_xtal_phy;

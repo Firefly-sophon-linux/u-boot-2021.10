@@ -602,7 +602,7 @@ static void dwc3_core_exit_mode(struct dwc3 *dwc)
  *
  * Generally called from board_usb_init() implemented in board file.
  */
-int dwc3_uboot_init(struct dwc3_device *dwc3_dev)
+int soph_dwc3_uboot_init(struct dwc3_device *dwc3_dev)
 {
 	struct dwc3		*dwc;
 	u8			lpm_nyet_threshold;
@@ -735,7 +735,7 @@ err0:
  *
  * Generally called from board file.
  */
-void dwc3_uboot_exit(int index)
+void soph_dwc3_uboot_exit(int index)
 {
 	struct dwc3 *dwc;
 
@@ -761,7 +761,7 @@ void dwc3_uboot_exit(int index)
  *
  * Generally called from board file.
  */
-void dwc3_uboot_handle_interrupt(int index)
+void soph_dwc3_uboot_handle_interrupt(int index)
 {
 	struct dwc3 *dwc = NULL;
 
@@ -774,7 +774,7 @@ void dwc3_uboot_handle_interrupt(int index)
 	}
 }
 
-int dwc3_init(struct dwc3 *dwc)
+int soph_dwc3_init(struct dwc3 *dwc)
 {
 	int ret;
 	u32 reg;
@@ -842,7 +842,7 @@ core_fail:
 	return ret;
 }
 
-void dwc3_remove(struct dwc3 *dwc)
+void soph_dwc3_remove(struct dwc3 *dwc)
 {
 	dwc3_core_exit_mode(dwc);
 	dwc3_event_buffers_cleanup(dwc);
