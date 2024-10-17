@@ -320,6 +320,22 @@ void get_dts_type_from_oem(unsigned char *dtsname)
 	if (strlen(dtsname) == 0)
 #endif
 		memcpy(dtsname, DEFAULT_DTSNAME, sizeof(DEFAULT_DTSNAME));
+#ifdef CONFIG_EMMC_SUPPORT
+        run_command("mmc dev 0 2\0", 0);
+        run_command("mmc read 0x120000000 0 1\0", 0); 
+        unsigned char result = 0;
+        memcpy(&result, (void *)(0x120000000 + 0xF0), 1);  // 读取 0x1200000F0 的数据
+        
+        unsigned char high_nibble = (result >> 4) & 0xF;  // 高 4 位
+        unsigned char low_nibble = result & 0xF;          // 低 4 位
+        
+        printf("INFO: Read result from 0x1200000F0: high nibble = 0x%X, low nibble = 0x%X\n", high_nibble, low_nibble);
+        if (result != 8) {
+            char suffix[8]; 
+            snprintf(suffix, sizeof(suffix), "_%uG", result);  
+            strncat(dtsname, suffix, DTSNAME_MAX_LEN - strlen(dtsname) - 1);
+        }
+#endif
 	printf("FORCE INFO: DTS_TYPE[%s]\n", dtsname);
 }
 
