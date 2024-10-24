@@ -55,9 +55,6 @@ static int do_firefly_sub_detect(struct cmd_tbl *cmdtp, int flag, int argc,
             goto cleanup;
         }
 
-        // 成功申请 GPIO，打印信息
-        printf("Successfully requested GPIO %s\n", prop_name);
-
         // 读取 GPIO 值
         if (!dm_gpio_is_valid(&gpiods[i])) {
             printf("Error: invalid GPIO %s\n", prop_name);
@@ -65,16 +62,18 @@ static int do_firefly_sub_detect(struct cmd_tbl *cmdtp, int flag, int argc,
         }
 
         position[i] = dm_gpio_get_value(&gpiods[i]);
+        // 成功申请 GPIO，打印信息
+        printf("Successfully requested GPIO %s-%d\n", prop_name, position[i]);
     }
 
     // 计算最终的 value
     for (i = 0; i < num_gpios; i++) {
         value += position[i] << i;
     }
-
+    value += 1;
     // 构造 firefly_sub_position 的值
     char buf[32];
-    if (value <= 8) {
+    if (value <= 10) {
         sprintf(buf, "sub%02d", value);
     } else {
         int major = (value - 1) / 8 + 1;
