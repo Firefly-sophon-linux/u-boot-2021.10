@@ -47,7 +47,7 @@ static int do_firefly_sub_detect(struct cmd_tbl *cmdtp, int flag, int argc,
         char prop_name[32];
         snprintf(prop_name, sizeof(prop_name), "firefly-bit%d-gpio", i);
         printf("Prepare requested GPIO %s\n", prop_name);
-        mdelay(100);
+        mdelay(1000);
         // 请求 GPIO
         ret = gpio_request_by_name_nodev(offset_to_ofnode(node), prop_name, 0, &gpiods[i], GPIOD_IS_IN);
         if (ret) {
