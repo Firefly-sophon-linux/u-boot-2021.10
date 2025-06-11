@@ -13,22 +13,39 @@ static int do_firefly_upgrade(struct cmd_tbl *cmdtp, int flag, int argc, char * 
     struct gpio_desc recovery_gpio;
     u32 value = -1;
     int sub_value = 0;
+    int node_type = 0; // 1:firefly-position 2:firefly-nvr-subboard
+    int recovery_active_value = 0;
+    char *position;
 
     // 检查设备树中是否存在 /position 节点
     int pos_node = fdt_path_offset(gd->fdt_blob, "/firefly-position");
-    if (pos_node < 0) {
-        printf("Error: could not find device tree node for /firefly-position\n");
+    // 检查设备树中是否存在 /firefly-nvr-subboard 节点
+    int nvr_node = fdt_path_offset(gd->fdt_blob, "/firefly-nvr-subboard");
+    
+    // 根据节点状态选择不同设置
+    if (pos_node >= 0) {
+        printf("Position mode detected\n");
+        node_type = 1;
+        recovery_active_value = 0;
+    }
+    else if (nvr_node >= 0) {
+        printf("NVR subboard mode detected\n");
+        node_type = 2;
+        recovery_active_value = 1;
+    }
+    else {
+        printf("Error: could not find device tree node for /firefly-position and /firefly-nvr-subboard\n");
         return -ENOENT;
     }
 
-   // 获取设备树节点
+    // 获取设备树节点
     node = fdt_path_offset(gd->fdt_blob, "/gpio-keys/gpio12");
     if (node < 0) {
         printf("Error: could not find device tree node for /gpio-keys\n");
         return -ENOENT;
     }
     mdelay(1000);
-     printf("Prepare requested GPIO·Recovery·Key\n");
+    printf("Prepare requested GPIO·Recovery·Key\n");
     // 申请 GPIO·Recovery·Key
     err = gpio_request_by_name_nodev(offset_to_ofnode(node), "gpios", 0, &recovery_gpio, GPIOD_IS_IN);
     if (err) {
@@ -50,36 +67,44 @@ static int do_firefly_upgrade(struct cmd_tbl *cmdtp, int flag, int argc, char * 
     dm_gpio_free(NULL, &recovery_gpio);
 
     // 如果 GPIO 被拉低，则执行特定命令
-    if (value == 0) {
-        // 运行 firefly_sub_detect 命令，获取子板位置
-        run_command("firefly_sub_detect", 0);
+    if (value == recovery_active_value) {
+        // firefly-position
+        if (node_type == 1) {
+            // 运行 firefly_sub_detect 命令，获取子板位置
+            run_command("firefly_sub_detect", 0);
 
-        // 从环境变量获取子板位置的数字
-        char *position = env_get("firefly_sub_position");
-        if (position == NULL) {
-            printf("Error: could not detect sub position\n");
-            return -1;
-        } else {
-            printf("position = %s\n", position);
-
-            if (strchr(position, '-') != NULL) {
-                char *dash = strchr(position, '-');
-                *dash = '\0'; 
-                int main = simple_strtol(position + 3, NULL, 10); 
-                int sub = simple_strtol(dash + 1, NULL, 10); 
-
-                sub_value = (main - 1) * 8 + sub;
+            // 从环境变量获取子板位置的数字
+            position = env_get("firefly_sub_position");
+            if (position == NULL) {
+                printf("Error: could not detect sub position\n");
+                return -1;
             } else {
-                sub_value = simple_strtol(position + 3, NULL, 10); 
+                printf("position = %s\n", position);
+
+                if (strchr(position, '-') != NULL) {
+                    char *dash = strchr(position, '-');
+                    *dash = '\0'; 
+                    int main = simple_strtol(position + 3, NULL, 10); 
+                    int sub = simple_strtol(dash + 1, NULL, 10); 
+
+                    sub_value = (main - 1) * 8 + sub;
+                } else {
+                    sub_value = simple_strtol(position + 3, NULL, 10); 
+                }
+
+                printf("sub_value = %d\n", sub_value);
             }
-
-            printf("sub_value = %d\n", sub_value);
-
-            // 构造 IP 和 TFTP 服务器地址
-            snprintf(tmp_buff, sizeof(tmp_buff), "setenv ipaddr 172.22.%d.0", sub_value);
-            run_command(tmp_buff, 0);
-            run_command("setenv serverip 172.22.250.0", 0);
         }
+        // firefly-nvr-subboard
+        else if (node_type == 2) {
+            sub_value = 1;
+            position = "sub01";
+        }
+
+        // 构造 IP 和 TFTP 服务器地址
+        snprintf(tmp_buff, sizeof(tmp_buff), "setenv ipaddr 172.22.%d.0", sub_value);
+        run_command(tmp_buff, 0);
+        run_command("setenv serverip 172.22.250.0", 0);
 
         // 设置网络参数
         run_command("setenv gatewayip 172.22.0.1", 0);
