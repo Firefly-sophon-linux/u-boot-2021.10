@@ -26,6 +26,9 @@
 #include <command.h>
 #include <mmc.h>
 #include <net.h>
+#include <serial.h>
+#include <part.h>
+#include <fat.h>
 
 #ifdef CONFIG_VIDEO_SOPH
 #include <video_soph.h>
@@ -37,6 +40,10 @@
 #include <asm/csr.h>
 #endif
 
+#define DTSNAME_MAX_LEN 32
+void get_dts_type_from_oem(unsigned char *dtsname);
+void get_dts_type_from_sram(unsigned char *dtsname);
+u64 get_ddr_size_from_sram(void);
 DECLARE_GLOBAL_DATA_PTR;
 #define SD1_SDIO_PAD
 
@@ -45,7 +52,7 @@ static struct mm_region cv186x_mem_map[] = {
 	{
 		.virt = 0x0UL,
 		.phys = 0x0UL,
-		.size = 0x80000000UL,
+		.size = 0xF0000000UL,
 		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
 			 PTE_BLOCK_NON_SHARE |
 			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
@@ -252,19 +259,301 @@ void board_show_logo(void)
 }
 #endif
 
+void edge_hdcp_load_key(void)
+{
+	/*Load hdmi hdcp key*/
+	#if defined(CONFIG_NVME_BOOT)
+	run_command("pci e", 0);
+	run_command("nvme scan", 0);
+	run_command("load nvme 0:1 0x102f80000 hdcp_key.bin", 0);
+	#elif defined(CONFIG_SATA_BOOT)
+	run_command("scsi scan", 0);
+	run_command("load scsi 0:1 0x102f80000 hdcp_key.bin", 0);
+	#else
+	run_command("load mmc 0:1 0x102f80000 hdcp_key.bin", 0);	//default for eMMC
+	#endif
+}
+
+void device_hdcp_load_key(void)
+{
+	run_command("load mmc 0:6 0x102f80000 hdcp_key.bin", 0);	//default for eMMC
+}
+
+/*sm9v1 pinmux init*/
+void sm9v1_board_init(void)
+{
+	PINMUX_CONFIG(CAM_MCLK0, CAM_MCLK0, G9);
+	PINMUX_CONFIG(CAM_MCLK1, CAM_MCLK1, G9);
+	PINMUX_CONFIG(CAM_MCLK2, CAM_MCLK2, G9);
+	PINMUX_CONFIG(CAM_MCLK3, CAM_MCLK3, G9);
+	PINMUX_CONFIG(CAM_MCLK4, CAM_MCLK4, G9);
+	PINMUX_CONFIG(CAM_MCLK5, CAM_MCLK5, G9);
+	PINMUX_CONFIG(IIC0_SCL, IIC0_SCL, G12);
+	PINMUX_CONFIG(IIC0_SDA, IIC0_SDA, G12);
+	PINMUX_CONFIG(IIC1_SCL, IIC1_SCL, G12);
+	PINMUX_CONFIG(IIC1_SDA, IIC1_SDA, G12);
+	PINMUX_CONFIG(IIC2_SCL, IIC2_SCL, G12);
+	PINMUX_CONFIG(IIC2_SDA, IIC2_SDA, G12);
+	//FOR WS BD
+	PINMUX_CONFIG(IIC4_SCL, SPI3_SDI, G12);
+	PINMUX_CONFIG(IIC4_SDA, SPI3_CS_X, G12);
+	PINMUX_CONFIG(IIC5_SCL, SPI3_SCK, G12);
+	PINMUX_CONFIG(IIC5_SDA, SPI3_SDO, G12);
+
+	PINMUX_CONFIG(UART2_RX, IIC6_SCL, G12);
+	PINMUX_CONFIG(UART2_TX, IIC6_SDA, G12);
+	PINMUX_CONFIG(CAM_XLR0, GPIO69, G9);
+	PINMUX_CONFIG(CAM_XLR1, GPIO70, G9);
+	PINMUX_CONFIG(GPIO4, GPIO115, G12);
+	PINMUX_CONFIG(GPIO5, GPIO116, G12);
+	PINMUX_CONFIG(UART4_RTS, GPIO93, G12);
+	PINMUX_CONFIG(UART4_CTS, GPIO94, G12);
+	PINMUX_CONFIG(UART4_RX, UART4_RX, G12);
+	PINMUX_CONFIG(UART4_TX, UART4_TX, G12);
+	PINMUX_CONFIG(UART1_CTS, GPIO86, G11);
+	mmio_write_32(0x27012004, mmio_read_32(0x27012004) | 0x400000);
+	mmio_write_32(0x27012000, mmio_read_32(0x27012000) | 0x400000);
+	PINMUX_CONFIG(UART1_RTS, GPIO85, G11);
+	mmio_write_32(0x27012004, mmio_read_32(0x27012004) | 0x200000);
+	mmio_write_32(0x27012000, mmio_read_32(0x27012000) | 0x200000);
+	//Power on SM9 VCC_3V3_SYS to make sure phy led active
+	mmio_write_32(0x5021004, mmio_read_32(0x5021004) | 0x800);
+	mmio_write_32(0x5021000, mmio_read_32(0x5021000) | 0x800);
+	//mipi dsi
+	//PINMUX_CONFIG(PAD_MIPI0_TX0P, PAD_MIPI0_TX0P, PHY);
+	//PINMUX_CONFIG(PAD_MIPI0_TX0N, PAD_MIPI0_TX0N, PHY);
+	//PINMUX_CONFIG(PAD_MIPI0_TX1P, PAD_MIPI0_TX1P, PHY);
+	//PINMUX_CONFIG(PAD_MIPI0_TX1N, PAD_MIPI0_TX1N, PHY);
+	//PINMUX_CONFIG(PAD_MIPI0_TX2P, PAD_MIPI0_TX2P, PHY);
+	//PINMUX_CONFIG(PAD_MIPI0_TX2N, PAD_MIPI0_TX2N, PHY);
+	//PINMUX_CONFIG(PAD_MIPI0_TX3P, PAD_MIPI0_TX3P, PHY);
+	//PINMUX_CONFIG(PAD_MIPI0_TX3N, PAD_MIPI0_TX3N, PHY);
+	//PINMUX_CONFIG(PAD_MIPI0_TX4P, PAD_MIPI0_TX4P, PHY);
+	//PINMUX_CONFIG(PAD_MIPI0_TX4N, PAD_MIPI0_TX4N, PHY);
+	//PINMUX_CONFIG(PAD_MIPI1_TX0P, PAD_MIPI1_TX0P, PHY);
+	//PINMUX_CONFIG(PAD_MIPI1_TX0N, PAD_MIPI1_TX0N, PHY);
+	//PINMUX_CONFIG(PAD_MIPI1_TX1P, PAD_MIPI1_TX1P, PHY);
+	//PINMUX_CONFIG(PAD_MIPI1_TX1N, PAD_MIPI1_TX1N, PHY);
+	//PINMUX_CONFIG(PAD_MIPI1_TX2P, PAD_MIPI1_TX2P, PHY);
+	//PINMUX_CONFIG(PAD_MIPI1_TX2N, PAD_MIPI1_TX2N, PHY);
+	//PINMUX_CONFIG(PAD_MIPI1_TX3P, PAD_MIPI1_TX3P, PHY);
+	//PINMUX_CONFIG(PAD_MIPI1_TX3N, PAD_MIPI1_TX3N, PHY);
+	//PINMUX_CONFIG(PAD_MIPI1_TX4P, PAD_MIPI1_TX4P, PHY);
+	//PINMUX_CONFIG(PAD_MIPI1_TX4N, PAD_MIPI1_TX4N, PHY);
+	PINMUX_CONFIG(PWR_UART_TX, PWR_UART_TX, G7);
+	PINMUX_CONFIG(PWR_UART_RX, PWR_UART_RX, G7);
+	//PINMUX_CONFIG(UART1_TX, UART1_TX, G11);
+	//PINMUX_CONFIG(UART1_RX, UART1_RX, G11);
+	PINMUX_CONFIG(GPIO1, GPIO112, G12);
+	PINMUX_CONFIG(GPIO0, GPIO111, G12);
+	PINMUX_CONFIG(GPIO3, GPIO114, G12);
+	//LED GPIO
+	PINMUX_CONFIG(PWR_GPIO1, PWR_GPIO1, G7);
+	//VCC12V-DCIN VCC_SYS_5V VCC_SYS_3V3
+	PINMUX_CONFIG(PWR_SEQ1, PWR_GPIO11, G7);//VCC12V-DCIN
+	PINMUX_CONFIG(GPIO1, GPIO112, G12);//VCC_SYS_5V
+	PINMUX_CONFIG(IIC2_SDA, GPIO99, G12);//VCC_SYS_3V3
+	//USB HOST
+	PINMUX_CONFIG(CAM_MCLK5, GPIO51, G9);//VCC HUB
+	PINMUX_CONFIG(PWR_GPIO5, PWR_GPIO5, G7);//VCC USB CON
+	//I2C5
+	PINMUX_CONFIG(SD1_D0, IIC5_SDA, G11);
+	PINMUX_CONFIG(SD1_D1, IIC5_SCL, G11);
+	//I2C6
+	PINMUX_CONFIG(SD1_D2, IIC6_SDA, G11);
+	PINMUX_CONFIG(SD1_D3, IIC6_SCL, G11);
+	//PCEI-NVME POWER EN
+	PINMUX_CONFIG(CAM_MCLK4, GPIO50, G9);
+	//UART1,UART2,UART4,UART5,UART6
+	PINMUX_CONFIG(PAD_MIPI1_TX0P, UART1_TX, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX0N, UART1_RX, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX1P, UART1_RTS, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX1N, UART1_CTS, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX2P, UART2_TX, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX2N, UART2_RX, PHY);
+	//绿色旧板使用这组UART4
+	PINMUX_CONFIG(FAN0, GPIO79, G9);
+	PINMUX_CONFIG(FAN1, GPIO80, G9);
+	//PINMUX_CONFIG(FAN0, UART4_TX, G9);
+	//PINMUX_CONFIG(FAN1, UART4_RX, G9);
+	PINMUX_CONFIG(PWM0, UART5_TX, G9);
+	PINMUX_CONFIG(PWM1, UART5_RX, G9);
+	PINMUX_CONFIG(PWM2, UART6_TX, G9);
+	PINMUX_CONFIG(PWM3, UART6_RX, G9);
+	PINMUX_CONFIG(SD1_CD_X, GPIO61, G12);
+	//PINMUX_CONFIG(SD0_PWR_EN, GPIO60, G9);
+	mmio_write_32(0x6700b0c0, 0x3fffffff);
+	mmio_write_32(0x6700b160, 0x0);
+	//MCU I2C GPIO
+	PINMUX_CONFIG(PAD_VIVO0_D13, GPIO131, G5);
+	PINMUX_CONFIG(PAD_VIVO0_D14, GPIO132, G5);
+	//VCC FOR 4G
+	PINMUX_CONFIG(PWR_GPIO4, PWR_GPIO4, G7);
+	//For GPIO
+	PINMUX_CONFIG(SD1_PWR_EN, GPIO68, G12);
+	PINMUX_CONFIG(PAD_MIPI1_TX3P, GPIO124, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX3N, GPIO125, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX4P, IIC3_SDA, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX4N, IIC3_SCL, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX0P, GPIO174, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX0N, GPIO175, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX1P, GPIO176, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX1N, GPIO177, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX2P, GPIO178, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX2N, GPIO179, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX3P, GPIO180, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX3N, GPIO181, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX4P, GPIO182, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX4N, GPIO183, PHY);
+	//SHUTDOWN IO
+	PINMUX_CONFIG(PWR_GPIO0, PWR_GPIO0, G7);
+	//CAM I2C
+	PINMUX_CONFIG(PAD_VIVO0_D15, IIC7_SDA, G5);
+	PINMUX_CONFIG(PAD_VIVO0_D16, IIC7_SCL, G5);
+	//FAN PWM
+	PINMUX_CONFIG(GPIO3, PWM11, G12);
+	//RECOVERY KEY
+	PINMUX_CONFIG(PWR_SEQ2, PWR_GPIO12, G7);
+	//GPIO
+	PINMUX_CONFIG(I2S0_SCLK, GPIO0, G6);
+	PINMUX_CONFIG(I2S0_WSI, GPIO1, G6);
+	PINMUX_CONFIG(I2S0_SDI0, GPIO2, G6);
+	PINMUX_CONFIG(I2S0_SDI1, GPIO3, G6);
+	PINMUX_CONFIG(I2S0_SDO, GPIO4, G6);
+	PINMUX_CONFIG(I2S0_MCLK, GPIO5, G6);
+	PINMUX_CONFIG(PWR_GPIO2, PWR_GPIO2, G7);
+	PINMUX_CONFIG(PWR_GPIO3, PWR_GPIO3, G7);
+	//PCIE RST
+	PINMUX_CONFIG(PAD_VIVO0_D11, GPIO129, G5);
+	PINMUX_CONFIG(PAD_VIVO0_D12, GPIO130, G5);
+	//BD UART3
+	PINMUX_CONFIG(IIC2_SDA, UART3_TX, G12);
+	PINMUX_CONFIG(IIC2_SCL, UART3_RX, G12);
+	//GPIO
+	PINMUX_CONFIG(UART1_TX, GPIO83, G11);
+	PINMUX_CONFIG(UART1_RX, GPIO84, G11);
+}
+
+/*sm9v2 pinmux init*/
+void sm9v2_board_init(void)
+{
+	PINMUX_CONFIG(CAM_MCLK0, CAM_MCLK0, G9);
+	PINMUX_CONFIG(CAM_MCLK1, CAM_MCLK1, G9);
+	PINMUX_CONFIG(CAM_MCLK2, CAM_MCLK2, G9);
+	PINMUX_CONFIG(CAM_MCLK3, CAM_MCLK3, G9);
+	PINMUX_CONFIG(CAM_MCLK4, CAM_MCLK4, G9);
+	PINMUX_CONFIG(CAM_MCLK5, CAM_MCLK5, G9);
+	PINMUX_CONFIG(IIC0_SCL, IIC0_SCL, G12);
+	PINMUX_CONFIG(IIC0_SDA, IIC0_SDA, G12);
+	PINMUX_CONFIG(IIC1_SCL, IIC1_SCL, G12);
+	PINMUX_CONFIG(IIC1_SDA, IIC1_SDA, G12);
+	PINMUX_CONFIG(IIC2_SCL, IIC2_SCL, G12);
+	PINMUX_CONFIG(IIC2_SDA, IIC2_SDA, G12);
+	PINMUX_CONFIG(IIC4_SCL, IIC4_SCL, G12);
+	PINMUX_CONFIG(IIC4_SDA, IIC4_SDA, G12);
+	PINMUX_CONFIG(UART2_RX, UART2_RX, G12);
+	PINMUX_CONFIG(UART2_TX, UART2_TX, G12);
+	PINMUX_CONFIG(UART2_RTS, UART2_RTS, G12);
+	PINMUX_CONFIG(UART2_CTS, UART2_CTS, G12);
+	PINMUX_CONFIG(CAM_XLR0, GPIO69, G9);
+	PINMUX_CONFIG(CAM_XLR1, GPIO70, G9);
+	PINMUX_CONFIG(GPIO4, GPIO115, G12);
+	PINMUX_CONFIG(GPIO5, GPIO116, G12);
+	PINMUX_CONFIG(UART4_RTS, GPIO93, G12);
+	PINMUX_CONFIG(UART4_CTS, GPIO94, G12);
+	PINMUX_CONFIG(UART4_RX, UART4_RX, G12);
+	PINMUX_CONFIG(UART4_TX, UART4_TX, G12);
+
+	PINMUX_CONFIG(UART1_CTS, UART5_RX, G11);
+	mmio_write_32(0x27012004, mmio_read_32(0x27012004) | 0x400000);
+	mmio_write_32(0x27012000, mmio_read_32(0x27012000) | 0x400000);
+	PINMUX_CONFIG(UART1_RTS, UART5_TX, G11);
+	mmio_write_32(0x27012004, mmio_read_32(0x27012004) | 0x200000);
+	mmio_write_32(0x27012000, mmio_read_32(0x27012000) | 0x200000);
+
+	//mipi dsi
+	PINMUX_CONFIG(PAD_MIPI0_TX0P, PAD_MIPI0_TX0P, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX0N, PAD_MIPI0_TX0N, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX1P, PAD_MIPI0_TX1P, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX1N, PAD_MIPI0_TX1N, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX2P, PAD_MIPI0_TX2P, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX2N, PAD_MIPI0_TX2N, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX3P, PAD_MIPI0_TX3P, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX3N, PAD_MIPI0_TX3N, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX4P, PAD_MIPI0_TX4P, PHY);
+	PINMUX_CONFIG(PAD_MIPI0_TX4N, PAD_MIPI0_TX4N, PHY);
+
+	PINMUX_CONFIG(PAD_MIPI1_TX0P, PAD_MIPI1_TX0P, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX0N, PAD_MIPI1_TX0N, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX1P, PAD_MIPI1_TX1P, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX1N, PAD_MIPI1_TX1N, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX2P, PAD_MIPI1_TX2P, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX2N, PAD_MIPI1_TX2N, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX3P, PAD_MIPI1_TX3P, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX3N, PAD_MIPI1_TX3N, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX4P, PAD_MIPI1_TX4P, PHY);
+	PINMUX_CONFIG(PAD_MIPI1_TX4N, PAD_MIPI1_TX4N, PHY);
+
+	PINMUX_CONFIG(PWR_UART_TX, PWR_GPIO16, G7);
+	PINMUX_CONFIG(PWR_UART_RX, PWR_GPIO17, G7);
+	PINMUX_CONFIG(UART1_TX, UART1_TX, G11);
+	PINMUX_CONFIG(UART1_RX, UART1_RX, G11);
+	PINMUX_CONFIG(GPIO1, GPIO112, G12);
+	PINMUX_CONFIG(GPIO0, GPIO111, G12);
+	PINMUX_CONFIG(GPIO3, GPIO114, G12);
+	PINMUX_CONFIG(GPIO2, GPIO113, G12);
+	PINMUX_CONFIG(IIC5_SCL, GPIO104, G12);
+	PINMUX_CONFIG(IIC5_SDA, GPIO103, G12);
+
+	PINMUX_CONFIG(PAD_VIVO0_D15, UART7_TX, G5);
+	PINMUX_CONFIG(PAD_VIVO0_D16, UART7_RX, G5);
+
+	//spi
+	PINMUX_CONFIG(PAD_VIVO0_D14, SPI0_SCK, G5);
+	PINMUX_CONFIG(PAD_VIVO0_D13, SPI0_SDO, G5);
+	PINMUX_CONFIG(PAD_VIVO0_D12, SPI0_SDI, G5);
+	PINMUX_CONFIG(PAD_VIVO0_D11, SPI0_CS_X, G5);
+
+	PINMUX_CONFIG(I2S0_SDI1, GPIO3, G6);
+	PINMUX_CONFIG(CAM_MCLK2, GPIO48, G9);
+
+	//GPIO
+	PINMUX_CONFIG(CAM_MCLK5, GPIO51, G9);
+	PINMUX_CONFIG(SD0_PWR_EN, GPIO60, G9);
+	PINMUX_CONFIG(SD1_PWR_EN, GPIO68, G12);
+	PINMUX_CONFIG(SD1_CD_X, GPIO61, G12);
+	PINMUX_CONFIG(CLK_25M_OUT, GPIO119, G7);
+	PINMUX_CONFIG(PCIE0_L0_CLKREQ_IN_X, GPIO42, G5);
+	PINMUX_CONFIG(PWR_GPIO0, PWR_GPIO0, G7);
+}
+
+/*set pinmux by prd*/
+void set_product_pinmux(void)
+{
+	char dtstype[DTSNAME_MAX_LEN] = { 0 };
+	get_dts_type_from_sram(dtstype);
+	if (strstr(dtstype, "sm9v1"))
+		sm9v1_board_init();
+	else if (strstr(dtstype, "se9b1"))
+		sm9v1_board_init();
+	else if (strstr(dtstype, "se9b3"))
+		sm9v1_board_init();
+	else if (strstr(dtstype, "se9b4"))
+		sm9v1_board_init();
+	else if (strstr(dtstype, "sm9v2"))
+		sm9v2_board_init();
+}
+
 int board_init(void)
 {
 #if (!defined CONFIG_TARGET_CVITEK_CV181X_FPGA) && (!defined CONFIG_TARGET_CVITEK_CV186X_FPGA) && \
 	(!defined CV186X_FPGA_PALLDIUM_ENV)
 	// extern uint32_t BOOT0_START_TIME;
 	//uint16_t start_time = DIV_ROUND_UP(BOOT0_START_TIME, SYS_COUNTER_FREQ_IN_SECOND / 1000);
-
 	// Save uboot start time. time is from boot0.h
 	//mmio_write_16(TIME_RECORDS_FIELD_UBOOT_START, start_time);
 #endif
-
 	cpu_pwr_ctrl();
-
 	pinmux_config(PINMUX_SDIO0);
 #if defined(CONFIG_NAND_SUPPORT)
 	pinmux_config(PINMUX_SPI_NAND);
@@ -296,6 +585,10 @@ int board_init(void)
 	PINMUX_CONFIG(PWR_GPIO4, PWR_GPIO4, G7);
 	PINMUX_CONFIG(PWR_GPIO5, PWR_GPIO5, G7);
 	PINMUX_CONFIG(PWR_GPIO6, PWR_GPIO6, G7);
+
+	//for product pinmux
+	set_product_pinmux();
+
 	bm_storage_boot_loader_version_uboot();
 	return 0;
 }
@@ -339,6 +632,58 @@ void get_dts_type_from_oem(unsigned char *dtsname)
 	printf("FORCE INFO: DTS_TYPE[%s]\n", dtsname);
 }
 
+/*get dts from sram*/
+void get_dts_type_from_sram(unsigned char *dtsname)
+{
+#ifdef CONFIG_EMMC_SUPPORT
+	if (!dtsname) {
+		return;
+	}
+	memcpy(dtsname, (void *)DTSTYPE_OEM_INFO, DTSNAME_MAX_LEN);
+	dtsname[DTSNAME_MAX_LEN - 1] = '\0';
+#endif
+	/*use default dts*/
+	if (strlen(dtsname) == 0)
+		memcpy(dtsname, DEFAULT_DTSNAME, sizeof(DEFAULT_DTSNAME));
+}
+
+u64 get_ddr_size_from_sram(void)
+{
+	u64 ddr_size;
+
+	ddr_size = mmio_read_32(DDR_SIZE_OEM_INFO);
+	switch (ddr_size) {
+	case 2:
+	case 4:
+	case 8:
+	case 12:
+	case 16:
+		break;
+
+	default:
+		return PHYS_SDRAM_1_SIZE;
+	}
+	return ddr_size * 1024 * 1024 * 1024;
+}
+
+/*set default console by oem*/
+struct serial_device *default_serial_console(void)
+{
+	/*select console uart*/
+	if (mmio_read_8(CONSOLE_OEM_INFO) == CONSOLE_USE_UART2){
+		return &eserial3_device;//uart2
+	}
+	return &eserial1_device;//uart0
+}
+
+/*set consoledev by oem*/
+void setup_sophgo_console(void)
+{
+	if (mmio_read_8(CONSOLE_OEM_INFO) == CONSOLE_USE_UART2)//uart2
+		env_set("consoledev", "ttyS2");
+	printf("set console 0x%x\n",mmio_read_8(CONSOLE_OEM_INFO));
+}
+
 int setup_sophgo_dts(void)
 {
 	char configName[DTSNAME_MAX_LEN * 2] = {0};
@@ -358,13 +703,19 @@ int setup_sophgo_dts(void)
 	env_set("DTS_TYPE", dtsType);
 	return 0;
 }
+
 #if defined(CONFIG_ROOTFS_UBUNTU) || defined(CONFIG_ROOTFS_DEBIAN)
 #ifdef CONFIG_BOARD_LATE_INIT
 static void get_ether_addr_from_emmc(unsigned char *mac, int i)
 {
+	#if defined(CONFIG_SPI_FLASH)
+	//todo: read from spinor flash
+
+	#else	//default eMMC
 	run_command("mmc dev 0 2\0", 0);
 	run_command("mmc read 0x120000000 0 0x60", 0);
 	memcpy(mac, (void *)(0x120000000 + 0x40 + i*0x10), 6);
+	#endif
 }
 #define ETHER_NUM 2
 #define MAC_SIZE 6
@@ -400,16 +751,30 @@ static int setup_mac(void)
 	return 0;
 }
 
+int check_ubootenv_file_exists(void)
+{
+	const char *filename = "u-boot.env";
+
+	return fat_exists(filename);
+}
+
 int board_late_init(void)
 {
 	console_record_reset_enable();
 	setup_mac();
 	setup_sophgo_dts();
+	setup_sophgo_console();
+	edge_hdcp_load_key();
 #ifdef CONFIG_VIDEO_SOPH
 	board_show_logo();
 #endif
-	cvi_board_late_init();
+	//check u-boot.env exist
+	if (!check_ubootenv_file_exists()) {
+		printf("save default env to /boot\n");
+		run_command("saveenv", 0);	//save default env
+	}
 
+	cvi_board_late_init();
 	return 0;
 }
 #endif
@@ -417,6 +782,8 @@ int board_late_init(void)
 int board_late_init(void)
 {
 	setup_sophgo_dts();
+	setup_sophgo_console();
+	device_hdcp_load_key();
 #ifdef CONFIG_VIDEO_SOPH
 	board_show_logo();
 #endif
@@ -427,14 +794,15 @@ int board_late_init(void)
 #if defined(__aarch64__)
 int dram_init(void)
 {
-	gd->ram_size = PHYS_SDRAM_1_SIZE;
+	gd->ram_size = get_ddr_size_from_sram();
+	mem_map[1].size = gd->ram_size;
 	return 0;
 }
 
 int dram_init_banksize(void)
 {
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
-	gd->bd->bi_dram[0].size = PHYS_SDRAM_1_SIZE;
+	gd->bd->bi_dram[0].size = get_ddr_size_from_sram();
 
 	return 0;
 }
@@ -523,3 +891,17 @@ void board_save_time_record(uintptr_t saveaddr)
 	mmio_write_16(saveaddr, DIV_ROUND_UP(boot_us, 1000));
 }
 
+#if defined(CONFIG_MULTI_DTB_FIT)
+int board_fit_config_name_match(const char *name)
+{
+	char fit_name[DTSNAME_MAX_LEN] = {0};
+	char dtstype[DTSNAME_MAX_LEN] = {0};
+
+	get_dts_type_from_sram(dtstype);
+	memcpy(fit_name, name + 7, strlen(name) - 7 -2);//only match product name eg:_sm9v1_
+	if (strstr((char *)dtstype, fit_name)) {
+		return 0;
+	}
+	return -1;
+}
+#endif
